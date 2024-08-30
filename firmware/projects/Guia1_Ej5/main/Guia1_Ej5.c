@@ -66,7 +66,7 @@ void app_main(void){
 
 	//Asigno OUT a la dirección de cada GPIO.
 	for (uint8_t i = 0; i<4; i++){
-		vecBits[i].dir = 1;
+		vecBits[i].dir = GPIO_OUTPUT;
 	}
 
 	estadoGPIO(vecBits, bcdNum); //Llamo a la función estadoGPIO
