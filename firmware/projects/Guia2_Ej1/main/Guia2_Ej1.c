@@ -81,20 +81,19 @@ TaskHandle_t mostrarDistancia_task_handle = NULL;
  * @brief Handle para la tarea que lee el teclado.
  */
 TaskHandle_t leerTeclado_task_handle = NULL;
-/*==================[internal functions declaration]=========================*/
 
+/*==================[internal functions declaration]=========================*/
 /**
  * @fn static void mostrarDistanciaTask(void *pvParameter)
  * 
  * @brief Mide la distancia usando un sensor ultrasonido y controla los LEDs y una pantalla LCD.
  * 
  * @param[in] pvParameter Parámetro opcional que se puede pasar a la tarea. No se utiliza en esta implementación.
- */
-
+ */ 
 static void mostrarDistanciaTask(void *pvParameter){
     while (true){
         uint16_t distancia;
-        distancia = HcSr04ReadDistanceInCentimeters(); /**< Lee la distancia en centímetros del sensor HC-SR04. */
+        distancia = HcSr04ReadDistanceInCentimeters(); 
 
         if(ACTIVAR == true){
 
@@ -126,7 +125,7 @@ static void mostrarDistanciaTask(void *pvParameter){
             LedsOffAll();        
         }
 
-        vTaskDelay(CONFIG_PERIOD_LEDS / portTICK_PERIOD_MS);    /**< Espera un período antes de la siguiente medición. */ 
+        vTaskDelay(CONFIG_PERIOD_LEDS / portTICK_PERIOD_MS); 
     }
 }
 
