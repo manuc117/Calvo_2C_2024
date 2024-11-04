@@ -2,15 +2,23 @@
  *
  * @section genDesc General Description
  *
- * This section describes how the program works.
+ * Este programa permite medir, con un sensor de ultrasonido, la distancia a la que se encuentra un ciclista de un vehículo 
+ * y advertirle al mismo mediante el encendido de leds, una alarma sonora y mensajes enviados a una aplicación de smartphone. 
+ * También permite medir, con un acelerómetro, la aceleración del ciclista y advertirle por medio de la aplicación de smartphone
+ * con un mensaje.
  *
  * <a href="https://drive.google.com/...">Operation Example</a>
  *
  * @section hardConn Hardware Connection
  *
- * |    Peripheral  |   ESP32   	|
+ * |   Peripheral   |    ESP32   	|
  * |:--------------:|:--------------|
- * | 	PIN_X	 	| 	GPIO_X		|
+ * | 	ECHO	 	| 	 GPIO_3		|
+ * | 	TRIGGER 	| 	 GPIO_2		|
+ * |	BUZZER		|	 GPIO_20	|
+ * |	  AD		|	   		|
+ * | 	 +5V	 	| 	  +5V		|
+ * | 	 GND	 	| 	   GND		|
  *
  *
  * @section changelog Changelog
@@ -35,12 +43,19 @@
 #include "timer_mcu.h"
 #include "gpio_mcu.h"
 #include "uart_mcu.h"
+#include "analog_io_mcu.h"
 /*==================[macros and definitions]=================================*/
 /**
  * @def CONFIG_PERIOD
  * @brief Periodo del temporizador en microsegundos para notificar la tarea de distancia.
  */
 #define CONFIG_PERIOD_LEDS 500000 //Medir 2 veces por segundo, entonces medimos 1 vez cada 0.5 seg
+
+/** 
+ * @def CONFIG_PERIOD
+ * @brief Período de configuración en microsegundos para el temporizador de la tarea del acelerómetro.
+ */
+#define CONFIG_PERIOD 100000
 
 /**
  * @def CONFIG_PERIOD_BUZZER1
@@ -59,6 +74,30 @@
  */
 uint16_t distancia;
 
+/** 
+ * @brief Variable para almacenar el valor de tensión leído en el eje X. 
+ */
+uint16_t ejeX;
+
+/** 
+ * @brief Variable para almacenar el valor de tensión leído en el eje Y. 
+ */
+uint16_t ejeY;
+
+/** 
+ * @brief Variable para almacenar el valor de tensión leído en el eje Z. 
+ */
+uint16_t ejeZ;
+
+/** 
+ * @brief Tension máxima en mV.
+ */
+uint16_t tensionMax = 2400;
+
+/** 
+ * @brief Variable para almacenar la suma escalar de las tensiones de los ejes X, Y y Z.
+ */
+uint16_t tension = 0;
 /*==================[internal data definition]===============================*/
 /**
  * @brief Handle para la tarea que mide la distancia y controla LEDs y la pantalla LCD.
@@ -137,9 +176,27 @@ static void medirDistanciaTask(void *pvParameter){
     }
 }
 
+
+/**
+ * @fn static void acelerometroTask(void *pvParameter)
+ * 
+ * @brief Mide la distancia usando un sensor ultrasonido y controla los LEDs.
+ * 
+ * @param[in] pvParameter Parámetro opcional que se puede pasar a la tarea. No se utiliza en esta implementación.
+ */
 static void acelerometroTask (void *pvParameter){
 	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-	
+
+	AnalogInputReadContinuous(CH1, &ejeX);
+	AnalogInputReadContinuous(CH1, &ejeY);
+	AnalogInputReadContinuous(CH1, &ejeZ);
+
+	tension = ejeX + ejeY + ejeZ;
+
+	if (tension > tensionMax){
+		UartSendString(UART_CONNECTOR, "Caída detectada");
+	} 
+
 }
 
 /*==================[external functions definition]==========================*/
@@ -161,7 +218,7 @@ void app_main(void){
 
 	timer_config_t timer_acelerometro = {
         .timer = TIMER_B,
-        .period = CONFIG_PERIOD_LEDS,
+        .period = CONFIG_PERIOD,
         .func_p = FuncTimerB,
         .param_p = NULL
     };
@@ -175,6 +232,37 @@ void app_main(void){
     //Inicio el conteo del timer.
     TimerStart(timer_medirDistancia.timer);
 	TimerStart(timer_acelerometro.timer);
+
+	//Defino la configuración de la entrada analógica.
+    analog_input_config_t entradaX = {
+		.input = CH1,		
+		.mode = ADC_CONTINUOUS,		
+		.func_p = NULL,			
+		.param_p = NULL,			
+		.sample_frec = 100
+	};
+
+	analog_input_config_t entradaY = {
+		.input = CH2,		
+		.mode = ADC_CONTINUOUS,		
+		.func_p = NULL,			
+		.param_p = NULL,			
+		.sample_frec = 100
+	};
+
+	analog_input_config_t entradaZ = {
+		.input = CH3,		
+		.mode = ADC_CONTINUOUS,		
+		.func_p = NULL,			
+		.param_p = NULL,			
+		.sample_frec = 100
+	};
+    //Inicializo la entrada analógica.
+	AnalogInputInit(&entradaX);
+	AnalogInputInit(&entradaY);
+	AnalogInputInit(&entradaZ);
+    //Inicializo la salida analógica.
+	AnalogOutputInit();
 
 	//Defino la estructura para la configuración del puerto serie.
     serial_config_t configPuertoSerie = {
