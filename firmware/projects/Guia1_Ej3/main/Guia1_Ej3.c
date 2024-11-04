@@ -32,7 +32,7 @@
 #include "led.h"
 #include "switch.h"
 /*==================[macros and definitions]=================================*/
-#define CONFIG_BLINK_PERIOD 1000
+#define CONFIG_BLINK_PERIOD 500
 uint8_t ON = 1;
 uint8_t OFF = 2;
 uint8_t TOGGLE = 3;
@@ -120,7 +120,7 @@ void app_main(void){
 	ledsPtr  = &my_leds;  //Asigno la dirección de memoria al puntero.
 	ledsPtr->mode = TOGGLE;
 	ledsPtr->n_led = 2;
-	ledsPtr->n_ciclos = 5;
+	ledsPtr->n_ciclos = 10;
 
 	LedsInit(); //Inicialización de los leds.
 	LedsControl(ledsPtr); //LLamo a la función LedsControl.
