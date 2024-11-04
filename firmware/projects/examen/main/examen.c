@@ -13,10 +13,14 @@
  *
  * |   Peripheral   |    ESP32   	|
  * |:--------------:|:--------------|
- * | 	ECHO	 	| 	 GPIO_3		|
- * | 	TRIGGER 	| 	 GPIO_2		|
+ * | 	ECHO	 	| 	 GPIO_22	|
+ * | 	TRIGGER 	| 	 GPIO_21	|
  * |	BUZZER		|	 GPIO_20	|
- * |	  AD		|	   		|
+ * |	  AD		|	 GPIO_1  	|
+ * |	  AD		|	 GPIO_2  	|
+ * |	  AD		|	 GPIO_3  	|
+ * |	 HC-05		|	 GPIO_18  	|
+ * |	 HC-05		|	 GPIO_19  	|
  * | 	 +5V	 	| 	  +5V		|
  * | 	 GND	 	| 	   GND		|
  *
@@ -135,7 +139,7 @@ void FuncTimerB(void* param){
 /**
  * @fn static void medirDistanciaTask(void *pvParameter)
  * 
- * @brief Mide la distancia usando un sensor ultrasonido y controla los LEDs.
+ * @brief Mide la distancia usando un sensor ultrasonido, controla los LEDs, una alarma sonora y envía mensajes por la UART.
  * 
  * @param[in] pvParameter Parámetro opcional que se puede pasar a la tarea. No se utiliza en esta implementación.
  */
@@ -180,7 +184,7 @@ static void medirDistanciaTask(void *pvParameter){
 /**
  * @fn static void acelerometroTask(void *pvParameter)
  * 
- * @brief Mide la distancia usando un sensor ultrasonido y controla los LEDs.
+ * @brief Mide la aceleración con un acelerómetro y avisa si hay una caida del ciclista.
  * 
  * @param[in] pvParameter Parámetro opcional que se puede pasar a la tarea. No se utiliza en esta implementación.
  */
@@ -204,7 +208,7 @@ void app_main(void){
 	//Inicializo los leds.
     LedsInit();
     //Inicializo el sensor de ultrasonido.
-    HcSr04Init(GPIO_3, GPIO_2);
+    HcSr04Init(GPIO_22, GPIO_21);
 	//Inicializo el GPIO
 	GPIOInit(GPIO_20, GPIO_OUTPUT);
 
@@ -226,14 +230,16 @@ void app_main(void){
     //Inicializo el timer.
     TimerInit(&timer_medirDistancia);
 	TimerInit(&timer_acelerometro);
+
     //Creación de la tarea "Mostrar distancia".
     xTaskCreate(&medirDistanciaTask, "Medir distancia", 512, NULL, 5, &medirDistancia_task_handle);
 	xTaskCreate(&acelerometroTask, "Acelerometro", 512, NULL, 5, &acelerometro_task_handle);
+
     //Inicio el conteo del timer.
     TimerStart(timer_medirDistancia.timer);
 	TimerStart(timer_acelerometro.timer);
 
-	//Defino la configuración de la entrada analógica.
+	//Defino la configuración de la entradas analógicas.
     analog_input_config_t entradaX = {
 		.input = CH1,		
 		.mode = ADC_CONTINUOUS,		
@@ -257,11 +263,13 @@ void app_main(void){
 		.param_p = NULL,			
 		.sample_frec = 100
 	};
-    //Inicializo la entrada analógica.
+
+    //Inicializo las entrada analógicas.
 	AnalogInputInit(&entradaX);
 	AnalogInputInit(&entradaY);
 	AnalogInputInit(&entradaZ);
-    //Inicializo la salida analógica.
+
+    //Inicializo las salidas analógicas.
 	AnalogOutputInit();
 
 	//Defino la estructura para la configuración del puerto serie.

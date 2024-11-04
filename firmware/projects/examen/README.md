@@ -1,3 +1,6 @@
 # Template
 
-Este proyecto sirve como platilla para crear nuevos proyectos siguiendo el instructivo [Proyecto Nuevo](../../../documentación/proyecto_nuevo.md).
+ Este programa permite medir, con un sensor de ultrasonido, la distancia a la que se encuentra un ciclista de un vehículo 
+ y advertirle al mismo mediante el encendido de leds, una alarma sonora y mensajes enviados a una aplicación de smartphone. 
+ También permite medir, con un acelerómetro, la aceleración del ciclista y advertirle por medio de la aplicación de smartphone
+ con un mensaje.
