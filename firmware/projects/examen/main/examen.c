@@ -33,13 +33,26 @@
 #include "lcditse0803.h"
 #include "switch.h"
 #include "timer_mcu.h"
-#include "buzzer.h"
+#include "gpio_mcu.h"
+#include "uart_mcu.h"
 /*==================[macros and definitions]=================================*/
 /**
  * @def CONFIG_PERIOD
  * @brief Periodo del temporizador en microsegundos para notificar la tarea de distancia.
  */
 #define CONFIG_PERIOD_LEDS 500000 //Medir 2 veces por segundo, entonces medimos 1 vez cada 0.5 seg
+
+/**
+ * @def CONFIG_PERIOD_BUZZER1
+ * @brief 
+ */
+#define CONFIG_PERIOD_BUZZER1 1000
+
+/**
+ * @def CONFIG_PERIOD_BUZZER2
+ * @brief 
+ */
+#define CONFIG_PERIOD_BUZZER2 500
 
 /**
  * @brief Variable que almacena la distancia medida por el sensor de ultrasonido.
@@ -52,6 +65,11 @@ uint16_t distancia;
  */
 TaskHandle_t medirDistancia_task_handle = NULL;
 
+/**
+ * @brief Handle para la tarea 
+ */
+TaskHandle_t acelerometro_task_handle = NULL;
+
 /*==================[internal functions declaration]=========================*/
 /**
  * @fn void FuncTimerA(void* param)
@@ -62,6 +80,17 @@ TaskHandle_t medirDistancia_task_handle = NULL;
  */
 void FuncTimerA(void* param){
     vTaskNotifyGiveFromISR(medirDistancia_task_handle, pdFALSE);    
+}
+
+/**
+ * @fn void FuncTimerB(void* param)
+ * 
+ * @brief Función del temporizador que notifica a la tarea `acelerometroTask` para su ejecución.
+ * 
+ * @param param Parámetro opcional que se puede pasar a la función. No se utiliza en esta implementación.
+ */
+void FuncTimerB(void* param){
+    vTaskNotifyGiveFromISR(acelerometro_task_handle, pdFALSE);    
 }
 
 /**
@@ -87,14 +116,30 @@ static void medirDistanciaTask(void *pvParameter){
             LedOn(LED_1);
             LedOn(LED_2);
             LedOff(LED_3);
+
+			GPIOOn(GPIO_20);
+			vTaskDelay(CONFIG_PERIOD_BUZZER1);
+			GPIOOff(GPIO_20);
+
+            UartSendString(UART_CONNECTOR, "Precaucion, vehiculo cerca.");
         }
         else if(distancia < 300){ //300 cm = 3 m
-            LedOn(LED_1);
+            LedOn(LED_1);;
             LedOn(LED_2);
             LedOn(LED_3);
-        }
 
+			GPIOOn(GPIO_20);
+			vTaskDelay(CONFIG_PERIOD_BUZZER2);
+			GPIOOff(GPIO_20);
+
+			UartSendString(UART_CONNECTOR, "Peligro, vehiculo cerca.");
+        }
     }
+}
+
+static void acelerometroTask (void *pvParameter){
+	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+	
 }
 
 /*==================[external functions definition]==========================*/
@@ -103,6 +148,8 @@ void app_main(void){
     LedsInit();
     //Inicializo el sensor de ultrasonido.
     HcSr04Init(GPIO_3, GPIO_2);
+	//Inicializo el GPIO
+	GPIOInit(GPIO_20, GPIO_OUTPUT);
 
     //Defino la estructura para la configuración del timer.
     timer_config_t timer_medirDistancia = {
@@ -112,12 +159,33 @@ void app_main(void){
         .param_p = NULL
     };
 
+	timer_config_t timer_acelerometro = {
+        .timer = TIMER_B,
+        .period = CONFIG_PERIOD_LEDS,
+        .func_p = FuncTimerB,
+        .param_p = NULL
+    };
+
     //Inicializo el timer.
     TimerInit(&timer_medirDistancia);
+	TimerInit(&timer_acelerometro);
     //Creación de la tarea "Mostrar distancia".
     xTaskCreate(&medirDistanciaTask, "Medir distancia", 512, NULL, 5, &medirDistancia_task_handle);
+	xTaskCreate(&acelerometroTask, "Acelerometro", 512, NULL, 5, &acelerometro_task_handle);
     //Inicio el conteo del timer.
     TimerStart(timer_medirDistancia.timer);
+	TimerStart(timer_acelerometro.timer);
 
+	//Defino la estructura para la configuración del puerto serie.
+    serial_config_t configPuertoSerie = {
+        .port = UART_CONNECTOR,	
+	    .baud_rate = 9600,	
+	    .func_p = NULL,			
+	    .param_p = NULL
+    };
+
+	//Inicializo el puerto serie.
+    UartInit(&configPuertoSerie);
+    
 }
 /*==================[end of file]============================================*/
